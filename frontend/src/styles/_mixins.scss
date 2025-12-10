@@ -1,0 +1,46 @@
+@use './variables' as *;
+
+@mixin flex-center($gap: 0.5rem) {
+  display: flex;
+  align-items: center;
+  gap: $gap;
+}
+
+@mixin glass-panel($blur: 20px, $opacity: 0.35) {
+  background: rgba(255, 255, 255, $opacity);
+  backdrop-filter: blur($blur);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: $shadow-soft;
+}
+
+@mixin card {
+  background: $color-card;
+  border-radius: $radius-lg;
+  border: 1px solid $color-border;
+  box-shadow: $shadow-soft;
+}
+
+@mixin heading-xl {
+  font-size: clamp(2rem, 3vw, 3rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+@mixin button-reset {
+  border: none;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+@mixin respond($breakpoint) {
+  @if $breakpoint == tablet {
+    @media (max-width: 960px) {
+      @content;
+    }
+  } @else if $breakpoint == mobile {
+    @media (max-width: 600px) {
+      @content;
+    }
+  }
+}
