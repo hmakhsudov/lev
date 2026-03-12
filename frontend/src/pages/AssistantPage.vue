@@ -124,7 +124,7 @@ const displayValue = (value, key) => {
   grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.7fr);
   gap: 2rem;
 
-  @media (max-width: 960px) {
+  @include mobile {
     grid-template-columns: 1fr;
   }
 }
@@ -135,6 +135,10 @@ const displayValue = (value, key) => {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+
+  @include mobile {
+    padding: 1.5rem;
+  }
 }
 
 .assistant-panel__header h1 {
@@ -176,6 +180,10 @@ const displayValue = (value, key) => {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 1rem;
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
 }
 
 .result-chip {

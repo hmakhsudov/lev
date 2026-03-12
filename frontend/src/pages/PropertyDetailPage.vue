@@ -28,7 +28,10 @@
         </ul>
       </div>
       <div class="detail-header__actions">
-        <button><Icon icon="solar:heart-linear" /> В избранное</button>
+        <button type="button" :class="{ active: isFavorited }" @click="toggleFavorite">
+          <Icon :icon="isFavorited ? 'solar:heart-bold' : 'solar:heart-linear'" />
+          {{ isFavorited ? "В избранном" : "В избранное" }}
+        </button>
         <button><Icon icon="solar:share-linear" /> Поделиться</button>
       </div>
     </header>
@@ -86,7 +89,7 @@
               <h2>Расположение</h2>
               <span>{{ property.address || locationLine }}</span>
             </div>
-            <ListingsMap :properties="[property]" :selected-property-id="property.id" />
+            <RealEstateMap :listings="[property]" :selected-id="property.id" />
           </section>
           <section class="detail-similar" v-if="similar.length">
             <div class="detail-similar__header">
@@ -94,7 +97,7 @@
               <p>Мы подобрали ещё предложения поблизости</p>
             </div>
             <div class="detail-similar__list">
-              <ListingCard v-for="item in similar" :key="item.id" :property="item" />
+              <ListingCard v-for="item in similar" :key="item.id" :property="item" layout="grid" />
             </div>
           </section>
         </section>
@@ -104,16 +107,25 @@
         <PriceBlock :property="property" :price-status="priceStatus" />
         <div class="contact-card">
           <h3>Контакт</h3>
-          <div class="agent">
+          <div v-if="agent" class="agent">
             <img src="https://images.unsplash.com/photo-1544723795-3fb6469f5b39?w=200" alt="Агент" />
             <div>
-              <strong>Анна Петрова</strong>
-              <span>Персональный менеджер</span>
+              <strong>{{ agentName }}</strong>
+              <span>{{ agentRole }}</span>
             </div>
           </div>
-          <BaseButton icon="solar:phone-bold" block>Показать телефон</BaseButton>
-          <BaseButton icon="solar:chat-round-line-duotone" variant="secondary" block>
-            Написать сообщение
+          <p v-else class="text-muted">Контакты не указаны</p>
+          <BaseButton v-if="agent" icon="solar:phone-bold" block>
+            {{ agentPhone }}
+          </BaseButton>
+          <BaseButton
+            v-if="agent"
+            icon="solar:chat-round-line-duotone"
+            variant="secondary"
+            block
+            @click="startChat"
+          >
+            Написать агенту
           </BaseButton>
         </div>
       </aside>
@@ -133,7 +145,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from "vue";
-import { useRoute, RouterLink } from "vue-router";
+import { useRoute, RouterLink, useRouter } from "vue-router";
 import { Icon } from "@iconify/vue";
 import { Swiper, SwiperSlide } from "swiper/vue";
 import { Navigation, Pagination } from "swiper/modules";
@@ -144,14 +156,18 @@ import "swiper/css/pagination";
 
 import BaseButton from "@/components/ui/BaseButton.vue";
 import BaseChip from "@/components/ui/BaseChip.vue";
-import ListingsMap from "@/components/ListingsMap.vue";
+import RealEstateMap from "@/components/RealEstateMap.vue";
 import ListingCard from "@/components/ListingCard.vue";
 import PriceBlock from "@/components/PriceBlock.vue";
 import SkeletonBlock from "@/components/ui/SkeletonBlock.vue";
 import { formatArea, formatFloor, formatRooms, safeNumber } from "@/utils/formatters";
 import api from "@/services/api";
+import { useAuthStore } from "@/store/auth";
+import { useFavoritesStore } from "@/store/favorites";
+import { useChatStore } from "@/store/chat";
 
 const route = useRoute();
+const router = useRouter();
 const property = ref(null);
 const similar = ref([]);
 const modules = [Navigation, Pagination];
@@ -162,6 +178,9 @@ const lightboxVisible = ref(false);
 const lightboxIndex = ref(0);
 const fallbackImage =
   "https://images.unsplash.com/photo-1505693314120-0d443867891c?w=1200&auto=format&fit=crop";
+const auth = useAuthStore();
+const favorites = useFavoritesStore();
+const chat = useChatStore();
 
 const gallery = computed(() => {
   if (!property.value) return [fallbackImage];
@@ -191,6 +210,55 @@ const priceStatus = computed(() => {
   if (predicted < price) return { label: "Цена выше рынка", hint: "Есть простор для торга", class: "is-risk" };
   return { label: "Рыночная цена", hint: "Соответствует прогнозу", class: "" };
 });
+
+const agent = computed(() => property.value?.agent || null);
+const agentName = computed(() => {
+  if (!agent.value) return "";
+  const full = [agent.value.first_name, agent.value.last_name].filter(Boolean).join(" ");
+  return full || agent.value.email || "Агент";
+});
+const agentPhone = computed(() => agent.value?.phone || "Телефон не указан");
+const agentRole = computed(() => {
+  if (!agent.value) return "";
+  return agent.value.role === "admin" ? "Администратор" : "Агент";
+});
+
+const isFavorited = computed(() => {
+  if (!property.value) return false;
+  if (property.value.is_favorited) return true;
+  return favorites.isFavorited(property.value.id);
+});
+
+const toggleFavorite = async () => {
+  if (!property.value) return;
+  if (!auth.isAuthenticated) {
+    alert("Войдите, чтобы добавить в избранное.");
+    router.push("/login");
+    return;
+  }
+  try {
+    await favorites.toggleFavorite(property.value);
+  } catch (error) {
+    alert("Не удалось обновить избранное. Попробуйте ещё раз.");
+  }
+};
+
+const startChat = async () => {
+  if (!property.value) return;
+  if (!auth.isAuthenticated) {
+    alert("Войдите, чтобы написать агенту.");
+    router.push("/login");
+    return;
+  }
+  try {
+    const conversation = await chat.startConversation(property.value.id);
+    if (conversation?.id) {
+      router.push(`/dialogs/${conversation.id}`);
+    }
+  } catch (error) {
+    alert("Не удалось создать диалог. Попробуйте ещё раз.");
+  }
+};
 
 const propertyTypeLabel = computed(() => {
   const type = property.value?.property_type;
@@ -322,6 +390,13 @@ onMounted(fetchProperty);
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
+    transition: background $transition-base, border-color $transition-base, color $transition-base;
+
+    &.active {
+      border-color: rgba(239, 68, 68, 0.4);
+      color: #ef4444;
+      background: rgba(239, 68, 68, 0.08);
+    }
   }
 }
 
@@ -330,7 +405,7 @@ onMounted(fetchProperty);
   grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.6fr);
   gap: 2rem;
 
-  @media (max-width: 1100px) {
+  @include mobile {
     grid-template-columns: 1fr;
   }
 }
@@ -397,7 +472,7 @@ onMounted(fetchProperty);
 
 .detail-info__mobile-price {
   display: none;
-  @media (max-width: 1100px) {
+  @include mobile {
     display: block;
   }
 }
@@ -458,8 +533,12 @@ onMounted(fetchProperty);
 
 .detail-similar__list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.25rem;
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
 }
 
 .detail-sidebar {
@@ -470,7 +549,7 @@ onMounted(fetchProperty);
   top: 90px;
   align-self: flex-start;
 
-  @media (max-width: 1100px) {
+  @include mobile {
     position: static;
   }
 }
@@ -503,5 +582,35 @@ onMounted(fetchProperty);
 
 .loading-state {
   padding: 4rem 0;
+}
+
+@include mobile {
+  .detail-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .detail-header__actions {
+    width: 100%;
+    flex-direction: column;
+
+    button {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+
+  .detail-gallery img {
+    height: 260px;
+  }
+
+  .detail-map :deep(.re-map) {
+    height: 55vh;
+  }
+
+  .feature-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

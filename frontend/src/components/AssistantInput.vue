@@ -84,7 +84,7 @@ textarea {
     color: $color-muted;
   }
 
-  @media (max-width: 768px) {
+  @include mobile {
     flex-direction: column;
     align-items: flex-start;
   }

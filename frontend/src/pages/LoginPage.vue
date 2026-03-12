@@ -7,6 +7,7 @@
       <form @submit.prevent="submit">
         <BaseField v-model="email" label="Email" icon="solar:letter-linear" type="email" required />
         <BaseField v-model="password" label="Пароль" icon="solar:lock-password-linear" type="password" required />
+        <p v-if="auth.error" class="form-error">{{ auth.error }}</p>
         <BaseButton type="submit" icon="solar:login-3-line-duotone" block>Войти</BaseButton>
       </form>
       <RouterLink to="/register">Нет аккаунта? Зарегистрируйтесь</RouterLink>
@@ -36,7 +37,7 @@ const router = useRouter();
 
 const submit = async () => {
   await auth.login({ email: email.value, password: password.value });
-  router.push("/");
+  router.push("/cabinet");
 };
 </script>
 
@@ -49,6 +50,10 @@ const submit = async () => {
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   align-items: center;
   gap: 2rem;
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
 }
 
 .auth-card {
@@ -57,6 +62,10 @@ const submit = async () => {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+
+  @include mobile {
+    padding: 1.5rem;
+  }
 }
 
 form {
@@ -65,11 +74,20 @@ form {
   gap: 1rem;
 }
 
+.form-error {
+  color: #dc2626;
+  font-weight: 600;
+}
+
 .auth-aside {
   position: relative;
   border-radius: $radius-lg;
   overflow: hidden;
   min-height: 420px;
+
+  @include mobile {
+    display: none;
+  }
 
   img {
     inset: 0;

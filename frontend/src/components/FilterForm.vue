@@ -67,7 +67,7 @@ header {
     font-size: 0.88rem;
   }
 
-  @media (max-width: 768px) {
+  @include mobile {
     flex-direction: column;
     align-items: flex-start;
   }
@@ -82,6 +82,10 @@ header {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1rem;
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
 }
 
 .select-field {
@@ -116,5 +120,10 @@ footer {
   align-items: center;
   gap: 1rem;
   flex-wrap: wrap;
+
+  @include mobile {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 </style>

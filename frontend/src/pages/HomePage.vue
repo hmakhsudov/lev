@@ -28,23 +28,51 @@
       </div>
     </section>
 
-    <FilterForm v-model="filters" @submit="fetchProperties" @reset="resetFilters" />
+    <div class="filters-inline">
+      <FilterForm v-model="filters" @submit="fetchProperties" @reset="resetFilters" />
+    </div>
 
-    <section class="content">
+    <div class="mobile-controls">
+      <button class="mobile-controls__btn" type="button" @click="openFilters">Фильтры</button>
+      <div class="mobile-controls__toggle">
+        <button :class="{ active: mobileView === 'list' }" @click="setMobileView('list')">Список</button>
+        <button :class="{ active: mobileView === 'map' }" @click="setMobileView('map')">Карта</button>
+      </div>
+    </div>
+
+    <div v-if="filtersOpen" class="filters-sheet">
+      <div class="filters-sheet__backdrop" @click="closeFilters" />
+      <div class="filters-sheet__panel">
+        <div class="filters-sheet__header">
+          <h3>Фильтры</h3>
+          <button type="button" class="filters-sheet__close" @click="closeFilters">Закрыть</button>
+        </div>
+        <FilterForm v-model="filters" @submit="applyFilters" @reset="resetFilters" />
+      </div>
+    </div>
+
+    <section
+      class="content"
+      :class="{
+        'content--full': viewMode === 'grid',
+        'content--mobile-map': mobileView === 'map',
+        'content--mobile-list': mobileView === 'list',
+      }"
+    >
       <div class="content__list">
         <div class="content__list-header">
           <div>
             <h2>Найдено {{ properties.length }} объектов</h2>
             <p class="text-muted">Обновлено {{ lastUpdated }}</p>
           </div>
-          <div class="view-switch">
-            <button :class="{ active: viewMode === 'list' }" @click="viewMode = 'list'">
-              <Icon icon="solar:rows-linear" /> Списком
-            </button>
-            <button :class="{ active: viewMode === 'grid' }" @click="viewMode = 'grid'">
-              <Icon icon="solar:widget-5-linear" /> Сеткой
-            </button>
-          </div>
+            <div class="view-switch">
+              <button :class="{ active: viewMode === 'list' }" @click="viewMode = 'list'">
+                <Icon icon="solar:rows-linear" /> Списком
+              </button>
+              <button :class="{ active: viewMode === 'grid' }" @click="viewMode = 'grid'">
+                <Icon icon="solar:widget-5-linear" /> Сеткой
+              </button>
+            </div>
         </div>
         <div class="cards" :class="`cards--${viewMode}`">
           <template v-if="loading">
@@ -56,6 +84,7 @@
                 v-for="item in properties"
                 :key="item.id"
                 :property="item"
+                :layout="viewMode === 'grid' ? 'grid' : 'list'"
                 @focus-map="focusOnProperty"
               />
             </transition-group>
@@ -70,8 +99,12 @@
           </template>
         </div>
       </div>
-      <div class="content__map" ref="mapWrapper">
-        <ListingsMap :properties="properties" :selected-property-id="selectedProperty?.id" />
+      <div v-if="viewMode === 'list'" class="content__map" ref="mapWrapper">
+        <RealEstateMap
+          :listings="properties"
+          :selected-id="selectedProperty?.id"
+          @marker-click="handleMarkerClick"
+        />
         <div class="map-legend">
           <p><Icon icon="solar:pin-linear" /> Каждая точка — квартира с ценой в маркере.</p>
           <p><Icon icon="solar:mouse-circle-linear" /> Наведите, чтобы увидеть адрес.</p>
@@ -83,11 +116,11 @@
 
 <script setup>
 import { Icon } from "@iconify/vue";
-import { computed, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import AssistantInput from "@/components/AssistantInput.vue";
 import FilterForm from "@/components/FilterForm.vue";
 import ListingCard from "@/components/ListingCard.vue";
-import ListingsMap from "@/components/ListingsMap.vue";
+import RealEstateMap from "@/components/RealEstateMap.vue";
 import BaseButton from "@/components/ui/BaseButton.vue";
 import BaseChip from "@/components/ui/BaseChip.vue";
 import SkeletonBlock from "@/components/ui/SkeletonBlock.vue";
@@ -100,6 +133,8 @@ const loading = ref(true);
 const viewMode = ref("list");
 const selectedProperty = ref(null);
 const mapWrapper = ref(null);
+const filtersOpen = ref(false);
+const mobileView = ref("list");
 
 const filters = ref({ city: "Санкт-Петербург" });
 const lastUpdated = computed(() => new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" }));
@@ -141,7 +176,44 @@ const focusOnProperty = (property) => {
   }
 };
 
-onMounted(fetchProperties);
+const handleMarkerClick = (property) => {
+  selectedProperty.value = property;
+};
+
+const openFilters = () => {
+  filtersOpen.value = true;
+};
+
+const closeFilters = () => {
+  filtersOpen.value = false;
+};
+
+const applyFilters = async () => {
+  await fetchProperties();
+  closeFilters();
+};
+
+const setMobileView = (value) => {
+  mobileView.value = value;
+  viewMode.value = "list";
+};
+
+watch(filtersOpen, (value) => {
+  document.body.style.overflow = value ? "hidden" : "";
+});
+
+const handleListingCreated = () => {
+  fetchProperties();
+};
+
+onMounted(() => {
+  fetchProperties();
+  window.addEventListener("listing:created", handleListingCreated);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("listing:created", handleListingCreated);
+});
 </script>
 
 <style scoped lang="scss">
@@ -159,6 +231,10 @@ onMounted(fetchProperties);
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 2rem;
   align-items: center;
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
 }
 
 .hero__content h1 {
@@ -180,6 +256,10 @@ onMounted(fetchProperties);
     color: $color-muted;
     font-size: 0.85rem;
   }
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
 }
 
 .hero__assistant {
@@ -191,8 +271,101 @@ onMounted(fetchProperties);
   grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
   gap: 1.5rem;
 
-  @media (max-width: 1100px) {
+  @include mobile {
     grid-template-columns: 1fr;
+  }
+}
+
+.content--full {
+  grid-template-columns: 1fr;
+}
+
+.filters-inline {
+  @include mobile {
+    display: none;
+  }
+}
+
+.mobile-controls {
+  display: none;
+  flex-direction: column;
+  gap: 0.75rem;
+
+  @include mobile {
+    display: flex;
+  }
+
+  &__btn {
+    border: none;
+    background: $color-primary;
+    color: #fff;
+    border-radius: 999px;
+    padding: 0.75rem 1.2rem;
+    font-weight: 600;
+  }
+
+  &__toggle {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+    background: #fff;
+    border-radius: 999px;
+    padding: 0.25rem;
+
+    button {
+      border: none;
+      background: transparent;
+      padding: 0.6rem;
+      border-radius: 999px;
+      font-weight: 600;
+
+      &.active {
+        background: rgba(31, 117, 255, 0.1);
+        color: $color-primary;
+      }
+    }
+  }
+}
+
+.filters-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: flex-end;
+
+  &__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.4);
+  }
+
+  &__panel {
+    position: relative;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+    background: #fff;
+    border-radius: 20px 20px 0 0;
+    padding: 1rem 1rem 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  &__close {
+    border: none;
+    background: rgba(15, 23, 42, 0.06);
+    border-radius: 999px;
+    padding: 0.5rem 1rem;
+    font-weight: 600;
   }
 }
 
@@ -208,7 +381,7 @@ onMounted(fetchProperties);
   align-items: center;
   gap: 1rem;
 
-  @media (max-width: 768px) {
+  @include mobile {
     flex-direction: column;
     align-items: flex-start;
   }
@@ -237,6 +410,10 @@ onMounted(fetchProperties);
       color: $color-primary;
     }
   }
+
+  @include mobile {
+    display: none;
+  }
 }
 
 .cards {
@@ -253,8 +430,13 @@ onMounted(fetchProperties);
 
 .cards--grid .cards__inner {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1.25rem;
+  align-items: stretch;
+
+  @include mobile {
+    grid-template-columns: 1fr;
+  }
 }
 
 .empty-state {
@@ -286,6 +468,11 @@ onMounted(fetchProperties);
   :deep(.map) {
     height: 100%;
   }
+
+  @include mobile {
+    position: static;
+    height: 60vh;
+  }
 }
 
 .map-legend {
@@ -294,5 +481,15 @@ onMounted(fetchProperties);
   flex-wrap: wrap;
   color: $color-muted;
   font-size: 0.85rem;
+}
+
+@include mobile {
+  .content--mobile-map .content__list {
+    display: none;
+  }
+
+  .content--mobile-list .content__map {
+    display: none;
+  }
 }
 </style>

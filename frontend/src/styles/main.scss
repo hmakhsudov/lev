@@ -11,6 +11,7 @@
 body {
   min-height: 100vh;
   background: $color-background;
+  overflow-x: hidden;
 }
 
 #app {
@@ -18,8 +19,39 @@ body {
 }
 
 .container {
-  width: min(1200px, 90vw);
+  width: 100%;
+  max-width: 1200px;
   margin-inline: auto;
+  padding: 0 16px;
+}
+
+@include mobile {
+  .container {
+    padding: 0 14px;
+  }
+}
+
+img,
+video,
+canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+button,
+input,
+select,
+textarea {
+  max-width: 100%;
+}
+
+@include mobile {
+  button,
+  input,
+  select,
+  textarea {
+    min-height: 44px;
+  }
 }
 
 .surface-card {
@@ -52,5 +84,19 @@ body {
   }
   100% {
     background-position: -100% 0;
+  }
+}
+
+a{
+  text-decoration: none;
+}
+
+@include mobile {
+  h1 {
+    font-size: 1.8rem;
+  }
+
+  h2 {
+    font-size: 1.4rem;
   }
 }
