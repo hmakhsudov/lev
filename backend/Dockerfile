@@ -9,10 +9,8 @@ WORKDIR /app/backend
 COPY requirements.txt /tmp/requirements.txt
 RUN pip install -r /tmp/requirements.txt
 
-COPY . /app/backend
-
-RUN chmod +x /app/backend/entrypoint.sh
+COPY . .
 
 EXPOSE 8000
 
-ENTRYPOINT ["/app/backend/entrypoint.sh"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "config.wsgi:application"]
