@@ -1,66 +1,38 @@
-# Docker local run
+# Local Docker Run
 
-This project can be started on another PC with Docker only.
+This Docker setup is intentionally simple and local-first:
 
-## What is included
+- `backend` runs Django with `runserver`
+- `frontend` runs Vite dev server
 
-- `backend` service: Django API served by Gunicorn
-- `frontend` service: built Vue app served by Nginx
-- `sqlite_data` volume: persists the SQLite database
-- `django_static` volume: shares Django static files with Nginx
+That avoids Nginx and Gunicorn issues and is the safest option for running the full project on another PC locally.
 
-The frontend proxies `/api` and `/admin/` to Django, so you open only one URL in the browser.
+## Start
 
-## First run
-
-1. Copy `.env.example` to `.env` ПРОСТО СОЗДАЙ .env файл рядом с env example
-2. Fill in any keys you need, especially:
-   - `DJANGO_SECRET_KEY`
-   - `OPENAI_API_KEY`
-   - `YANDEX_GEOCODER_API_KEY`
-   - `VITE_YANDEX_MAPS_API_KEY` 
-3. Start the stack:
+1. Copy `.env.example` to `.env`
+2. Run:
 
 ```bash
 docker compose up --build
 ```
 
-Then open:
+Open:
 
-- Frontend: `http://localhost:8080`
+- Frontend: `http://localhost:5173`
 - Backend API: `http://localhost:8000/api/`
-- Django admin: `http://localhost:8080/admin/`
-- Frontend admin page: `http://localhost:8080/admin`
 
-## Useful commands
+## Full reset
 
-Create a Django superuser:
+If Docker cached old broken containers or images:
 
 ```bash
-docker compose exec backend python manage.py createsuperuser
-```
-
-Stop the stack:
-
-```bash
-docker compose down
-```
-
-Stop and remove containers but keep data:
-
-```bash
-docker compose down
-```
-
-Stop and remove containers and volumes:
-
-```bash
-docker compose down -v
+docker compose down -v --remove-orphans --rmi local
+docker compose up --build
 ```
 
 ## Notes
 
-- Migrations and `collectstatic` run automatically when the backend container starts.
-- The default database is SQLite inside the `sqlite_data` Docker volume.
-- `GUNICORN_WORKERS=1` is intentional because SQLite is safest with a single worker for local use.
-- The frontend contains chat websocket client code, but this backend currently exposes only HTTP endpoints. Messaging still falls back to HTTP where implemented.
+- Backend auto-runs migrations on startup.
+- SQLite is stored in the `sqlite_data` volume.
+- Frontend source is mounted into the container for predictable local startup.
+- Node modules are stored in the `frontend_node_modules` volume.

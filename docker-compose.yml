@@ -2,13 +2,11 @@ services:
   backend:
     build:
       context: ./backend
-    env_file:
-      - .env
     environment:
-      DATABASE_URL: "${DATABASE_URL:-sqlite:////app/backend/data/db.sqlite3}"
+      DATABASE_URL: "${DATABASE_URL:-sqlite:////app/data/db.sqlite3}"
       DEBUG: "${DEBUG:-True}"
       ALLOWED_HOSTS: "${ALLOWED_HOSTS:-*}"
-      CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-http://localhost:8080,http://127.0.0.1:8080}"
+      CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}"
       DJANGO_SECRET_KEY: "${DJANGO_SECRET_KEY:-change-me}"
       OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
       YANDEX_GEOCODER_API_KEY: "${YANDEX_GEOCODER_API_KEY:-}"
@@ -16,31 +14,33 @@ services:
       ADS_API_TOKEN: "${ADS_API_TOKEN:-}"
       ADS_API_BASE_URL: "${ADS_API_BASE_URL:-https://ads-api.ru/main/api}"
       ADS_API_CATEGORY_FLATS: "${ADS_API_CATEGORY_FLATS:-1}"
-      GUNICORN_WORKERS: "${GUNICORN_WORKERS:-1}"
-      GUNICORN_TIMEOUT: "${GUNICORN_TIMEOUT:-120}"
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     volumes:
-      - sqlite_data:/app/backend/data
-      - django_static:/app/backend/staticfiles
+      - ./backend:/app
+      - sqlite_data:/app/data
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py runserver 0.0.0.0:8000"
     restart: unless-stopped
 
   frontend:
     build:
       context: ./frontend
-      args:
-        VITE_API_URL: "${VITE_API_URL:-/api}"
-        VITE_WS_URL: "${VITE_WS_URL:-ws://localhost:8080}"
-        VITE_YANDEX_MAPS_API_KEY: "${VITE_YANDEX_MAPS_API_KEY:-}"
-        VITE_OPENAI_KEY: "${VITE_OPENAI_KEY:-}"
+    environment:
+      VITE_API_URL: "${VITE_API_URL:-http://localhost:8000/api}"
+      VITE_WS_URL: "${VITE_WS_URL:-ws://localhost:8000}"
+      VITE_YANDEX_MAPS_API_KEY: "${VITE_YANDEX_MAPS_API_KEY:-}"
+      VITE_OPENAI_KEY: "${VITE_OPENAI_KEY:-}"
     depends_on:
       - backend
     ports:
-      - "${FRONTEND_PORT:-8080}:80"
+      - "${FRONTEND_PORT:-5173}:5173"
     volumes:
-      - django_static:/usr/share/nginx/html/static:ro
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
     restart: unless-stopped
 
 volumes:
   sqlite_data:
-  django_static:
+  frontend_node_modules:

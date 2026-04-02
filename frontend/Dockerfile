@@ -1,26 +1,12 @@
-FROM node:22-alpine AS build
+FROM node:22-alpine
 
 WORKDIR /app
-
-ARG VITE_API_URL=/api
-ARG VITE_WS_URL=ws://localhost:8080
-ARG VITE_YANDEX_MAPS_API_KEY=
-ARG VITE_OPENAI_KEY=
-
-ENV VITE_API_URL=$VITE_API_URL \
-    VITE_WS_URL=$VITE_WS_URL \
-    VITE_YANDEX_MAPS_API_KEY=$VITE_YANDEX_MAPS_API_KEY \
-    VITE_OPENAI_KEY=$VITE_OPENAI_KEY
 
 COPY package*.json ./
 RUN npm ci
 
 COPY . .
-RUN npm run build
 
-FROM nginx:1.27-alpine
+EXPOSE 5173
 
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /app/dist /usr/share/nginx/html
-
-EXPOSE 80
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]
