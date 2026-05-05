@@ -33,6 +33,7 @@ class PropertyViewSet(viewsets.ModelViewSet):
         max_price = params.get("max_price")
         rooms = params.get("rooms")
         district = params.get("district")
+        city = params.get("city")
         property_type = params.get("property_type")
         area_min = params.get("area_min")
         area_max = params.get("area_max")
@@ -44,6 +45,8 @@ class PropertyViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(price__lte=max_price)
         if rooms:
             queryset = queryset.filter(rooms=rooms)
+        if city:
+            queryset = queryset.filter(city__icontains=city)
         if district:
             queryset = queryset.filter(district__icontains=district)
         if property_type:

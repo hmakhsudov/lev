@@ -91,10 +91,7 @@
             <div v-if="!properties.length" class="empty-state">
               <img src="https://illustrations.popsy.co/gray/workflow-ui.svg" alt="Нет объектов" />
               <h3>Пусто, но не надолго</h3>
-              <p>Попробуйте изменить фильтры или уточнить запрос для ассистента.</p>
-              <BaseButton icon="solar:magic-star-line-duotone" @click="handleAssistant(aiQuery)">
-                Спросить AI снова
-              </BaseButton>
+              <p>Попробуйте изменить фильтры или сбросить их.</p>
             </div>
           </template>
         </div>
@@ -121,7 +118,6 @@ import AssistantInput from "@/components/AssistantInput.vue";
 import FilterForm from "@/components/FilterForm.vue";
 import ListingCard from "@/components/ListingCard.vue";
 import RealEstateMap from "@/components/RealEstateMap.vue";
-import BaseButton from "@/components/ui/BaseButton.vue";
 import BaseChip from "@/components/ui/BaseChip.vue";
 import SkeletonBlock from "@/components/ui/SkeletonBlock.vue";
 import api from "@/services/api";

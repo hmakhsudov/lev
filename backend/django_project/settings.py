@@ -62,10 +62,12 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "django_project.wsgi.application"
 
+DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'db.sqlite3'}")
 DATABASES = {
     "default": dj_database_url.parse(
-        os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'db.sqlite3'}"),
-        conn_max_age=600,
+        DATABASE_URL,
+        # Persistent SQLite connections can keep stale file handles in Docker dev.
+        conn_max_age=0 if DATABASE_URL.startswith("sqlite") else 600,
     )
 }
 

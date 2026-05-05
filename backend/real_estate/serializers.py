@@ -64,6 +64,7 @@ class PropertySerializer(serializers.ModelSerializer):
             "rooms",
             "floor",
             "floors_total",
+            "year_built",
             "property_type",
             "building_type",
             "address",
@@ -105,18 +106,63 @@ class PropertySerializer(serializers.ModelSerializer):
 
 class PropertyWriteSerializer(serializers.ModelSerializer):
     gallery = PropertyImageSerializer(many=True, required=False)
+    image_urls = serializers.ListField(
+        child=serializers.URLField(), write_only=True, required=False, allow_empty=True
+    )
 
-    class Meta(PropertySerializer.Meta):
+    class Meta:
+        model = Property
+        fields = [
+            "id",
+            "external_id",
+            "source",
+            "source_id",
+            "title",
+            "description",
+            "price",
+            "predicted_price",
+            "area_total",
+            "living_area",
+            "kitchen_area",
+            "rooms",
+            "floor",
+            "floors_total",
+            "year_built",
+            "property_type",
+            "building_type",
+            "address",
+            "district",
+            "city",
+            "latitude",
+            "longitude",
+            "is_new_building",
+            "images",
+            "image_urls",
+            "gallery",
+            "external_url",
+            "created_at",
+            "updated_at",
+        ]
         read_only_fields = ["id", "created_at", "updated_at"]
 
     def create(self, validated_data):
         images_data = validated_data.pop("gallery", [])
+        image_urls = validated_data.pop("image_urls", None)
+        if image_urls is not None:
+            validated_data["images"] = image_urls
+            if not images_data:
+                images_data = [{"url": url} for url in image_urls]
         property_obj = Property.objects.create(**validated_data)
         self._save_images(property_obj, images_data)
         return property_obj
 
     def update(self, instance, validated_data):
         images_data = validated_data.pop("gallery", None)
+        image_urls = validated_data.pop("image_urls", None)
+        if image_urls is not None:
+            validated_data["images"] = image_urls
+            if images_data is None:
+                images_data = [{"url": url} for url in image_urls]
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
