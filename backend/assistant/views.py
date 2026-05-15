@@ -6,7 +6,7 @@ from real_estate.models import Property
 from real_estate.serializers import PropertySerializer
 
 from .serializers import QuerySerializer
-from .services import AssistantClientError, parse_query_with_openai
+from .services import AssistantClientError, parse_query_with_openrouter
 
 
 class QueryParseView(APIView):
@@ -18,7 +18,7 @@ class QueryParseView(APIView):
         serializer.is_valid(raise_exception=True)
         query = serializer.validated_data["query"]
         try:
-            ai_response = parse_query_with_openai(query)
+            ai_response = parse_query_with_openrouter(query)
         except AssistantClientError as exc:
             return Response(
                 {"error": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE
@@ -37,6 +37,8 @@ class QueryParseView(APIView):
         qs = Property.objects.all()
         rooms = self._to_int(filters.get("rooms"))
         price_max = self._to_int(filters.get("price_max"))
+        area_min = self._to_float(filters.get("area_min"))
+        area_max = self._to_float(filters.get("area_max"))
         district = filters.get("district")
         city = filters.get("city")
         property_type = filters.get("property_type")
@@ -45,6 +47,10 @@ class QueryParseView(APIView):
             qs = qs.filter(rooms=rooms)
         if price_max is not None:
             qs = qs.filter(price__lte=price_max)
+        if area_min is not None:
+            qs = qs.filter(area_total__gte=area_min)
+        if area_max is not None:
+            qs = qs.filter(area_total__lte=area_max)
         if district:
             qs = qs.filter(district__icontains=district)
         if city:
@@ -60,5 +66,14 @@ class QueryParseView(APIView):
             if value is None:
                 return None
             return int(value)
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _to_float(value):
+        try:
+            if value is None:
+                return None
+            return float(value)
         except (TypeError, ValueError):
             return None

@@ -13,11 +13,36 @@ class UserSerializer(serializers.ModelSerializer):
             "email",
             "first_name",
             "last_name",
+            "phone",
             "role",
             "created_at",
             "updated_at",
         ]
         read_only_fields = fields
+
+
+class UserPublicSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["id", "email", "first_name", "last_name", "phone", "role"]
+        read_only_fields = fields
+
+
+class UserProfileUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["first_name", "last_name", "phone"]
+        extra_kwargs = {
+            "first_name": {"required": False, "allow_blank": True, "max_length": 150},
+            "last_name": {"required": False, "allow_blank": True, "max_length": 150},
+            "phone": {"required": False, "allow_blank": True, "max_length": 32},
+        }
+
+    def validate_phone(self, value):
+        value = (value or "").strip()
+        if value and not all(char.isdigit() or char in "+-() " for char in value):
+            raise serializers.ValidationError("Введите корректный номер телефона.")
+        return value
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -30,13 +55,9 @@ class RegisterSerializer(serializers.ModelSerializer):
             "email",
             "password",
             "password_confirm",
-            "role",
             "first_name",
             "last_name",
         ]
-        extra_kwargs = {
-            "role": {"required": False, "default": User.ROLE_USER},
-        }
 
     def validate_email(self, value):
         value = self.Meta.model.objects.normalize_email(value)
@@ -52,8 +73,36 @@ class RegisterSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         password = validated_data.pop("password")
         validated_data.pop("password_confirm", None)
-        user = User.objects.create_user(password=password, **validated_data)
+        user = User.objects.create_user(password=password, role=User.ROLE_USER, **validated_data)
         return user
+
+
+class AgentCreateSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, min_length=8, style={"input_type": "password"})
+
+    class Meta:
+        model = User
+        fields = ["id", "email", "password", "first_name", "last_name", "phone"]
+        read_only_fields = ["id"]
+        extra_kwargs = {
+            "first_name": {"required": False, "allow_blank": True},
+            "last_name": {"required": False, "allow_blank": True},
+            "phone": {"required": False, "allow_blank": True},
+        }
+
+    def validate_email(self, value):
+        value = self.Meta.model.objects.normalize_email(value)
+        if User.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError("Пользователь с таким email уже существует.")
+        return value
+
+    def create(self, validated_data):
+        password = validated_data.pop("password")
+        return User.objects.create_user(
+            password=password,
+            role=User.ROLE_AGENT,
+            **validated_data,
+        )
 
 
 class LoginSerializer(serializers.Serializer):

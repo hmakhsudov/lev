@@ -2,8 +2,7 @@
   <div class="home container">
     <section class="hero">
       <div class="hero__content" v-motion :initial="{ opacity: 0, y: 25 }" :enter="{ opacity: 1, y: 0 }">
-        <BaseChip icon="solar:stars-bold" variant="neutral">Lev AI</BaseChip>
-        <h1>Подбор недвижимости с интеллектом уровня премиальных агентств</h1>
+        <h1>Подбор недвижимости с использованием ИИ</h1>
         <p>
           Опишите квартиру мечты, укажите бюджет, район или станцию метро — Lev Estate преобразует запрос в фильтры,
           загрузит объявления и покажет всё на карте с живой аналитикой.
@@ -13,10 +12,10 @@
             <strong>5 200+</strong>
             <span>актуальных объектов</span>
           </div>
-          <div>
-            <strong>12 сек</strong>
-            <span>до готового подбора</span>
-          </div>
+          <!-- <div>
+            <strong>Быстрый</strong>
+            <span>подбор</span>
+          </div> -->
           <div>
             <strong>24/7</strong>
             <span>AI ассистент</span>
@@ -29,7 +28,7 @@
     </section>
 
     <div class="filters-inline">
-      <FilterForm v-model="filters" @submit="fetchProperties" @reset="resetFilters" />
+      <FilterForm v-model="filters" @submit="submitFilters" @reset="resetFilters" />
     </div>
 
     <div class="mobile-controls">
@@ -62,7 +61,7 @@
       <div class="content__list">
         <div class="content__list-header">
           <div>
-            <h2>Найдено {{ properties.length }} объектов</h2>
+            <h2>Найдено {{ totalCount }} объектов</h2>
             <p class="text-muted">Обновлено {{ lastUpdated }}</p>
           </div>
             <div class="view-switch">
@@ -93,6 +92,11 @@
               <h3>Пусто, но не надолго</h3>
               <p>Попробуйте изменить фильтры или сбросить их.</p>
             </div>
+            <nav v-if="totalPages > 1" class="pagination" aria-label="Пагинация объектов">
+              <button type="button" :disabled="page === 1" @click="goToPage(page - 1)">Назад</button>
+              <span>Страница {{ page }} из {{ totalPages }}</span>
+              <button type="button" :disabled="page === totalPages" @click="goToPage(page + 1)">Вперёд</button>
+            </nav>
           </template>
         </div>
       </div>
@@ -118,7 +122,6 @@ import AssistantInput from "@/components/AssistantInput.vue";
 import FilterForm from "@/components/FilterForm.vue";
 import ListingCard from "@/components/ListingCard.vue";
 import RealEstateMap from "@/components/RealEstateMap.vue";
-import BaseChip from "@/components/ui/BaseChip.vue";
 import SkeletonBlock from "@/components/ui/SkeletonBlock.vue";
 import api from "@/services/api";
 
@@ -131,15 +134,41 @@ const selectedProperty = ref(null);
 const mapWrapper = ref(null);
 const filtersOpen = ref(false);
 const mobileView = ref("list");
+const page = ref(1);
+const pageSize = 12;
+const totalCount = ref(0);
 
-const filters = ref({ city: "Санкт-Петербург" });
+const filters = ref({});
 const lastUpdated = computed(() => new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" }));
+const totalPages = computed(() => Math.max(1, Math.ceil(totalCount.value / pageSize)));
+
+const normalizeListResponse = (data) => {
+  if (Array.isArray(data)) {
+    return { results: data, count: data.length };
+  }
+  return {
+    results: data?.results || [],
+    count: Number(data?.count || 0),
+  };
+};
+
+const cleanParams = () => {
+  const params = { ...filters.value, page: page.value, page_size: pageSize };
+  Object.keys(params).forEach((key) => {
+    if (params[key] === "" || params[key] === null || params[key] === undefined) {
+      delete params[key];
+    }
+  });
+  return params;
+};
 
 const fetchProperties = async () => {
   loading.value = true;
   try {
-    const { data } = await api.get("/properties/", { params: filters.value });
-    properties.value = data;
+    const { data } = await api.get("/properties/", { params: cleanParams() });
+    const normalized = normalizeListResponse(data);
+    properties.value = normalized.results;
+    totalCount.value = normalized.count;
   } catch (error) {
     console.error(error);
   } finally {
@@ -152,6 +181,7 @@ const handleAssistant = async (text) => {
   try {
     const { data } = await api.post("/assistant/parse-query/", { query: text });
     filters.value = { ...filters.value, ...data.filters };
+    page.value = 1;
     await fetchProperties();
   } catch (error) {
     console.error(error);
@@ -161,7 +191,18 @@ const handleAssistant = async (text) => {
 };
 
 const resetFilters = () => {
-  filters.value = { city: "Санкт-Петербург" };
+  filters.value = {};
+  page.value = 1;
+  fetchProperties();
+};
+
+const submitFilters = () => {
+  page.value = 1;
+  fetchProperties();
+};
+
+const goToPage = (nextPage) => {
+  page.value = Math.min(Math.max(nextPage, 1), totalPages.value);
   fetchProperties();
 };
 
@@ -185,6 +226,7 @@ const closeFilters = () => {
 };
 
 const applyFilters = async () => {
+  page.value = 1;
   await fetchProperties();
   closeFilters();
 };
@@ -226,7 +268,7 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 2rem;
-  align-items: center;
+  align-items: start;
 
   @include mobile {
     grid-template-columns: 1fr;
@@ -235,7 +277,7 @@ onBeforeUnmount(() => {
 
 .hero__content h1 {
   @include heading-xl;
-  margin: 1rem 0;
+  margin: 0 0 1rem;
 }
 
 .hero__stats {
@@ -259,7 +301,13 @@ onBeforeUnmount(() => {
 }
 
 .hero__assistant {
-  align-self: stretch;
+  align-self: end;
+  margin-top: 4.5rem;
+
+  @include mobile {
+    margin-top: 0;
+    align-self: stretch;
+  }
 }
 
 .content {
@@ -449,6 +497,36 @@ onBeforeUnmount(() => {
   p {
     color: $color-muted;
     margin-bottom: 1.5rem;
+  }
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0 1rem;
+
+  button {
+    border: none;
+    border-radius: 999px;
+    padding: 0.65rem 1.2rem;
+    background: $color-primary;
+    color: #fff;
+    font-weight: 700;
+    cursor: pointer;
+
+    &:disabled {
+      background: rgba(15, 23, 42, 0.12);
+      color: $color-muted;
+      cursor: not-allowed;
+    }
+  }
+
+  span {
+    color: $color-muted;
+    font-weight: 600;
   }
 }
 

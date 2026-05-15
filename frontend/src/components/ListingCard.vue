@@ -27,15 +27,15 @@
           {{ priceStatus.label }}
         </BaseChip>
       </div>
-      <div class="listing-card__media-inner">
+      <RouterLink :to="`/property/${property.id}`" class="listing-card__media-inner">
         <img :src="previewImage" :alt="property.title || 'Объект недвижимости'" @error="onImageError" />
         <div class="listing-card__media-overlay">
-          <RouterLink :to="`/property/${property.id}`">
+          <span>
             Подробнее
             <Icon icon="solar:arrow-right-up-linear" width="18" />
-          </RouterLink>
+          </span>
         </div>
-      </div>
+      </RouterLink>
     </div>
 
     <div class="listing-card__content">
@@ -55,10 +55,10 @@
           <span>{{ roomsLabel }}</span>
         </div>
         <div class="info-pill">
-          <Icon icon="solar:ruler-cross-linear" width="18" />
+          <Icon icon="solar:ruler-linear" width="18" />
           <span>{{ areaLabel }}</span>
         </div>
-        <div class="info-pill">
+        <div v-if="floorLabel" class="info-pill">
           <Icon icon="solar:buildings-2-linear" width="18" />
           <span>{{ floorLabel }}</span>
         </div>
@@ -272,7 +272,7 @@ const priceStatus = computed(() => {
   padding: 1rem;
   transition: opacity $transition-base;
 
-  a {
+  span {
     color: #fff;
     display: inline-flex;
     align-items: center;

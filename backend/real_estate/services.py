@@ -148,14 +148,13 @@ def sync_ads_listings(
 
         price = _extract_price(payload)
         if price is None:
-            skipped += 1
             logger.warning(
-                "ADS listing %s skipped: price not found (raw=%s | full=%s)",
+                "ADS listing %s has no price in ADS payload, importing with price=0 (raw=%s | full=%s)",
                 external_id,
                 payload.get("price"),
                 json.dumps(payload, ensure_ascii=False),
             )
-            continue
+            price = Decimal("0")
 
         defaults, gallery_urls = _map_payload_to_defaults(
             payload, price, latitude, longitude
@@ -292,7 +291,7 @@ def _extract_price(payload) -> Optional[Decimal]:
             candidates.append(value)
     for candidate in candidates:
         decimal_value = _to_decimal(candidate)
-        if decimal_value is not None and decimal_value > 0:
+        if decimal_value is not None and decimal_value >= 0:
             return decimal_value
     return None
 

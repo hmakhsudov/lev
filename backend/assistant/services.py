@@ -16,6 +16,8 @@ SYSTEM_PROMPT = (
     '  "filters": {'
     '     "rooms": <int|null>,'
     '     "price_max": <int|null>,'
+    '     "area_min": <number|null>,'
+    '     "area_max": <number|null>,'
     '     "district": "<строка|null>",'
     '     "city": "<строка|null>",'
     '     "property_type": "<apartment|room|house|commercial|null>"'
@@ -29,13 +31,13 @@ class AssistantClientError(Exception):
     pass
 
 
-def parse_query_with_openai(query: str) -> Dict[str, Any]:
-    api_key = settings.OPENAI_API_KEY
+def parse_query_with_openrouter(query: str) -> Dict[str, Any]:
+    api_key = settings.OPENROUTER_TOKEN
     if not api_key:
-        raise AssistantClientError("OPENAI_API_KEY is not configured")
+        raise AssistantClientError("OPENROUTER_TOKEN is not configured")
 
     payload = {
-        "model": "gpt-4o-mini",
+        "model": settings.OPENROUTER_MODEL,
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": query},
@@ -44,37 +46,37 @@ def parse_query_with_openai(query: str) -> Dict[str, Any]:
     }
     try:
         response = requests.post(
-            "https://api.openai.com/v1/chat/completions",
+            _chat_completions_url(settings.OPENROUTER_API),
             headers={
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
             },
             json=payload,
-            timeout=30,
+            timeout=settings.OPENROUTER_TIMEOUT_SECONDS,
         )
         response.raise_for_status()
     except requests.HTTPError as exc:
         logger.exception(
-            "OpenAI returned HTTP %s: %s",
+            "OpenRouter returned HTTP %s: %s",
             exc.response.status_code if exc.response else "unknown",
             exc.response.text if exc.response else "no body",
         )
-        raise AssistantClientError("OpenAI request failed") from exc
+        raise AssistantClientError("OpenRouter request failed") from exc
     except requests.RequestException as exc:
-        logger.exception("OpenAI network error: %s", exc)
-        raise AssistantClientError("OpenAI request failed") from exc
+        logger.exception("OpenRouter network error: %s", exc)
+        raise AssistantClientError("OpenRouter request failed") from exc
 
     try:
         data = response.json()
     except ValueError as exc:
-        logger.exception("Failed to decode OpenAI JSON: %s", response.text)
-        raise AssistantClientError("Invalid OpenAI response") from exc
+        logger.exception("Failed to decode OpenRouter JSON: %s", response.text)
+        raise AssistantClientError("Invalid OpenRouter response") from exc
 
     try:
         content = data["choices"][0]["message"]["content"]
     except (KeyError, IndexError) as exc:
-        logger.exception("Unexpected OpenAI payload: %s", data)
-        raise AssistantClientError("Invalid OpenAI response") from exc
+        logger.exception("Unexpected OpenRouter payload: %s", data)
+        raise AssistantClientError("Invalid OpenRouter response") from exc
     cleaned_content = content.strip()
     if cleaned_content.startswith("```"):
         lines = cleaned_content.splitlines()
@@ -90,8 +92,19 @@ def parse_query_with_openai(query: str) -> Dict[str, Any]:
         if parsed is not None:
             return parsed
 
-    logger.exception("OpenAI returned non-JSON content: %s", content)
-    raise AssistantClientError("Invalid JSON from OpenAI")
+    logger.exception("OpenRouter returned non-JSON content: %s", content)
+    raise AssistantClientError("Invalid JSON from OpenRouter")
+
+
+# Старое имя оставлено как совместимость для импортов в коде/тестах.
+parse_query_with_openai = parse_query_with_openrouter
+
+
+def _chat_completions_url(api_url: str) -> str:
+    normalized = (api_url or "").rstrip("/")
+    if normalized.endswith("/chat/completions"):
+        return normalized
+    return f"{normalized}/chat/completions"
 
 
 def _parse_json(payload: str) -> Dict[str, Any] | None:

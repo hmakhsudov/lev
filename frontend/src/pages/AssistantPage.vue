@@ -79,11 +79,19 @@ import api from "@/services/api";
 const query = ref("");
 const loading = ref(false);
 const result = ref(null);
-const labels = { rooms: "Комнаты", price_max: "Макс. цена", district: "Район", city: "Город", property_type: "Тип" };
+const labels = {
+  rooms: "Комнаты",
+  price_max: "Макс. цена",
+  area_min: "Мин. площадь",
+  area_max: "Макс. площадь",
+  district: "Район",
+  city: "Город",
+  property_type: "Тип",
+};
 
 const tips = [
-  { title: "Укажите станции метро", body: "Например: рядом с метро Чкаловская", icon: "solar:metro-line-duotone" },
-  { title: "Добавьте площадь", body: "AI умеет понимать диапазоны и сравнения", icon: "solar:ruler-cross-broken" },
+  { title: "Укажите станции метро", body: "Например: рядом с метро Чкаловская", icon: "solar:map-point-bold" },
+  { title: "Добавьте площадь", body: "Например: от 45 до 70 м²", icon: "solar:ruler-linear" },
   { title: "Сравните районы", body: "Можно просить несколько районов сразу", icon: "solar:map-point-line-duotone" },
 ];
 
@@ -110,6 +118,9 @@ const displayValue = (value, key) => {
     return new Intl.NumberFormat("ru-RU", { style: "currency", currency: "RUB", maximumFractionDigits: 0 }).format(
       value,
     );
+  }
+  if (key === "area_min" || key === "area_max") {
+    return `${Number(value).toLocaleString("ru-RU")} м²`;
   }
   return value;
 };

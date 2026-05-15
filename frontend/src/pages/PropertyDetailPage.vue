@@ -24,7 +24,7 @@
           <li>{{ propertyTypeLabel }}</li>
           <li>{{ roomsLabel }}</li>
           <li>{{ areaLabel }}</li>
-          <li>{{ floorLabel }}</li>
+          <li v-if="floorLabel">{{ floorLabel }}</li>
         </ul>
       </div>
       <div class="detail-header__actions">
@@ -32,7 +32,7 @@
           <Icon :icon="isFavorited ? 'solar:heart-bold' : 'solar:heart-linear'" />
           {{ isFavorited ? "В избранном" : "В избранное" }}
         </button>
-        <button><Icon icon="solar:share-linear" /> Поделиться</button>
+        <button type="button" @click="shareProperty"><Icon icon="solar:share-linear" /> Поделиться</button>
       </div>
     </header>
 
@@ -108,16 +108,13 @@
         <div class="contact-card">
           <h3>Контакт</h3>
           <div v-if="agent" class="agent">
-            <img src="https://images.unsplash.com/photo-1544723795-3fb6469f5b39?w=200" alt="Агент" />
-            <div>
-              <strong>{{ agentName }}</strong>
-              <span>{{ agentRole }}</span>
-            </div>
+            <strong>{{ agentName }}</strong>
+            <span>{{ agent.email }}</span>
+            <span>{{ agentRole }}</span>
           </div>
-          <p v-else class="text-muted">Контакты не указаны</p>
-          <BaseButton v-if="agent" icon="solar:phone-bold" block>
-            {{ agentPhone }}
-          </BaseButton>
+          <p v-else class="text-muted">
+            Объект загружен из внешнего источника. Диалог доступен только для объектов, созданных агентом на сайте.
+          </p>
           <BaseButton
             v-if="agent"
             icon="solar:chat-round-line-duotone"
@@ -130,6 +127,10 @@
         </div>
       </aside>
     </section>
+
+    <transition name="fade">
+      <div v-if="toastMessage" class="detail-toast">{{ toastMessage }}</div>
+    </transition>
 
     <VueEasyLightbox
       :visible="lightboxVisible"
@@ -181,6 +182,16 @@ const fallbackImage =
 const auth = useAuthStore();
 const favorites = useFavoritesStore();
 const chat = useChatStore();
+const toastMessage = ref("");
+let toastTimer = null;
+
+const showToast = (message) => {
+  toastMessage.value = message;
+  window.clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => {
+    toastMessage.value = "";
+  }, 2400);
+};
 
 const gallery = computed(() => {
   if (!property.value) return [fallbackImage];
@@ -215,9 +226,8 @@ const agent = computed(() => property.value?.agent || null);
 const agentName = computed(() => {
   if (!agent.value) return "";
   const full = [agent.value.first_name, agent.value.last_name].filter(Boolean).join(" ");
-  return full || agent.value.email || "Агент";
+  return full || "Агент";
 });
-const agentPhone = computed(() => agent.value?.phone || "Телефон не указан");
 const agentRole = computed(() => {
   if (!agent.value) return "";
   return agent.value.role === "admin" ? "Администратор" : "Агент";
@@ -243,6 +253,25 @@ const toggleFavorite = async () => {
   }
 };
 
+const shareProperty = async () => {
+  const url = window.location.href;
+  try {
+    await navigator.clipboard.writeText(url);
+    showToast("Ссылка скопирована");
+  } catch (error) {
+    const textarea = document.createElement("textarea");
+    textarea.value = url;
+    textarea.setAttribute("readonly", "");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textarea);
+    showToast("Ссылка скопирована");
+  }
+};
+
 const startChat = async () => {
   if (!property.value) return;
   if (!auth.isAuthenticated) {
@@ -253,7 +282,8 @@ const startChat = async () => {
   try {
     const conversation = await chat.startConversation(property.value.id);
     if (conversation?.id) {
-      router.push(`/dialogs/${conversation.id}`);
+      await router.push(`/dialogs/${conversation.id}`);
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
     }
   } catch (error) {
     alert("Не удалось создать диалог. Попробуйте ещё раз.");
@@ -286,7 +316,7 @@ const features = computed(() => {
     { label: "Общая площадь", value: areaLabel.value },
     { label: "Жилая площадь", value: formatArea(property.value.living_area) },
     { label: "Площадь кухни", value: formatArea(property.value.kitchen_area) },
-    { label: "Этаж", value: floorLabel.value },
+    ...(floorLabel.value ? [{ label: "Этаж", value: floorLabel.value }] : []),
     { label: "Год постройки", value: property.value.year_built || "—" },
     { label: "Тип дома", value: property.value.building_type || "—" },
     { label: "Новостройка", value: property.value.is_new_building ? "Да" : "Нет" },
@@ -317,7 +347,10 @@ const fetchProperty = async () => {
   const similarResponse = await api.get("/properties/", {
     params: { district: data.district, rooms: data.rooms, max_price: data.price * 1.2 },
   });
-  similar.value = similarResponse.data.filter((item) => item.id !== data.id).slice(0, 4);
+  const similarItems = Array.isArray(similarResponse.data)
+    ? similarResponse.data
+    : similarResponse.data?.results || [];
+  similar.value = similarItems.filter((item) => item.id !== data.id).slice(0, 4);
 };
 
 onMounted(fetchProperty);
@@ -563,14 +596,23 @@ onMounted(fetchProperty);
 
   .agent {
     display: flex;
-    gap: 0.75rem;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.45rem;
+    min-width: 0;
 
-    img {
-      width: 56px;
-      height: 56px;
-      border-radius: 50%;
-      object-fit: cover;
+    strong,
+    span {
+      display: block;
+      max-width: 100%;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      line-height: 1.35;
+    }
+
+    strong {
+      color: #0f172a;
+      font-size: 1.05rem;
     }
 
     span {
@@ -582,6 +624,20 @@ onMounted(fetchProperty);
 
 .loading-state {
   padding: 4rem 0;
+}
+
+.detail-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 1.5rem;
+  transform: translateX(-50%);
+  z-index: 120;
+  padding: 0.85rem 1.2rem;
+  border-radius: 999px;
+  background: #0f172a;
+  color: #fff;
+  font-weight: 700;
+  box-shadow: $shadow-hover;
 }
 
 @include mobile {

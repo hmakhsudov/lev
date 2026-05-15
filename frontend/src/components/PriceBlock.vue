@@ -16,7 +16,7 @@
         <span>Площадь</span>
         <strong>{{ areaLabel }}</strong>
       </div>
-      <div>
+      <div v-if="floorLabel">
         <span>Этаж</span>
         <strong>{{ floorLabel }}</strong>
       </div>

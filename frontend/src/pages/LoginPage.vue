@@ -16,7 +16,7 @@
       <img src="https://images.unsplash.com/photo-1505691938895-1758d7feb511?w=900" alt="" />
       <div>
         <h3>Lev Estate</h3>
-        <p>Премиальная цифровая витрина недвижимости с поддержкой AI.</p>
+        <p>Цифровая витрина недвижимости с поддержкой AI.</p>
       </div>
     </aside>
   </div>
@@ -36,7 +36,15 @@ const auth = useAuthStore();
 const router = useRouter();
 
 const submit = async () => {
-  await auth.login({ email: email.value, password: password.value });
+  const user = await auth.login({ email: email.value, password: password.value });
+  if (user?.role === "admin") {
+    router.push("/admin");
+    return;
+  }
+  if (user?.role === "agent") {
+    router.push("/agent");
+    return;
+  }
   router.push("/cabinet");
 };
 </script>
@@ -84,12 +92,14 @@ form {
   border-radius: $radius-lg;
   overflow: hidden;
   min-height: 420px;
+  isolation: isolate;
 
   @include mobile {
     display: none;
   }
 
   img {
+    position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
@@ -98,12 +108,27 @@ form {
 
   div {
     position: absolute;
-    bottom: 1rem;
-    left: 1rem;
-    background: rgba(0, 0, 0, 0.4);
+    left: 50%;
+    right: auto;
+    bottom: 1.25rem;
+    width: min(360px, calc(100% - 2.5rem));
+    transform: translateX(-50%);
+    background: rgba(15, 23, 42, 0.72);
     color: #fff;
-    padding: 1rem;
+    padding: 1rem 1.25rem;
     border-radius: $radius-md;
+    text-align: center;
+    backdrop-filter: blur(10px);
+
+    h3,
+    p {
+      margin: 0;
+    }
+
+    p {
+      margin-top: 0.35rem;
+      line-height: 1.45;
+    }
   }
 }
 </style>

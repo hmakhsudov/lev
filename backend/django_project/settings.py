@@ -17,6 +17,7 @@ ALLOWED_HOSTS = [
 ] or ["*"]
 
 INSTALLED_APPS = [
+    "daphne",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -26,10 +27,12 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework_simplejwt",
     "corsheaders",
+    "channels",
     "core",
     "accounts",
     "real_estate",
     "assistant",
+    "chat",
 ]
 
 MIDDLEWARE = [
@@ -61,6 +64,13 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "django_project.wsgi.application"
+ASGI_APPLICATION = "django_project.asgi.application"
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
+    }
+}
 
 DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{BASE_DIR / 'db.sqlite3'}")
 DATABASES = {
@@ -87,6 +97,8 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "accounts.User"
@@ -112,7 +124,21 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
 }
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+OPENROUTER_TOKEN = (
+    os.getenv("OPENROUTER_TOKEN")
+    or os.getenv("OPENROUTER_API_KEY")
+    or os.getenv("OPENAI_API_KEY", "")
+)
+OPENROUTER_API = (
+    os.getenv("OPENROUTER_API")
+    or os.getenv("OPENROUTER_API_URL")
+    or "https://openrouter.ai/api/v1/chat/completions"
+)
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openai/gpt-4o-mini")
+try:
+    OPENROUTER_TIMEOUT_SECONDS = int(os.getenv("OPENROUTER_TIMEOUT_SECONDS", "30"))
+except ValueError:
+    OPENROUTER_TIMEOUT_SECONDS = 30
 YANDEX_GEOCODER_API_KEY = os.getenv("YANDEX_GEOCODER_API_KEY", "")
 ADS_API_USER = os.getenv("ADS_API_USER", "")
 ADS_API_TOKEN = os.getenv("ADS_API_TOKEN", "")

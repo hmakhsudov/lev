@@ -8,7 +8,11 @@ services:
       ALLOWED_HOSTS: "${ALLOWED_HOSTS:-*}"
       CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}"
       DJANGO_SECRET_KEY: "${DJANGO_SECRET_KEY:-change-me}"
+      OPENROUTER_TOKEN: "${OPENROUTER_TOKEN:-}"
       OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      OPENROUTER_API: "${OPENROUTER_API:-https://openrouter.ai/api/v1/chat/completions}"
+      OPENROUTER_TIMEOUT_SECONDS: "${OPENROUTER_TIMEOUT_SECONDS:-30}"
+      OPENROUTER_MODEL: "${OPENROUTER_MODEL:-openai/gpt-4o-mini}"
       YANDEX_GEOCODER_API_KEY: "${YANDEX_GEOCODER_API_KEY:-}"
       ADS_API_USER: "${ADS_API_USER:-}"
       ADS_API_TOKEN: "${ADS_API_TOKEN:-}"
@@ -20,7 +24,8 @@ services:
       - ./backend:/app
       - sqlite_data:/app/data
     command: >
-      sh -c "python manage.py migrate --noinput &&
+      sh -c "python -m pip install -r /app/requirements.txt &&
+             python manage.py migrate --noinput &&
              python manage.py runserver 0.0.0.0:8000"
     restart: unless-stopped
 
@@ -31,7 +36,6 @@ services:
       VITE_API_URL: "${VITE_API_URL:-http://localhost:8000/api}"
       VITE_WS_URL: "${VITE_WS_URL:-ws://localhost:8000}"
       VITE_YANDEX_MAPS_API_KEY: "${VITE_YANDEX_MAPS_API_KEY:-}"
-      VITE_OPENAI_KEY: "${VITE_OPENAI_KEY:-}"
     depends_on:
       - backend
     ports:

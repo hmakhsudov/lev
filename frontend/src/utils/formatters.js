@@ -18,8 +18,11 @@ export const formatRooms = (rooms) => {
 };
 
 export const formatFloor = (floor, floorsTotal) => {
-  if (!floor || !floorsTotal) return "Этаж уточняется";
-  return `${floor} из ${floorsTotal}`;
+  const floorNumber = Number(floor);
+  const floorsTotalNumber = Number(floorsTotal);
+  if (!Number.isFinite(floorNumber) || floorNumber <= 0) return "";
+  if (!Number.isFinite(floorsTotalNumber) || floorsTotalNumber <= 0) return `${floorNumber} этаж`;
+  return `${floorNumber} из ${floorsTotalNumber}`;
 };
 
 export const safeNumber = (value) => {

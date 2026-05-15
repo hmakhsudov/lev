@@ -119,7 +119,9 @@ export const useChatStore = defineStore("chat", {
         }
       };
 
-      socket.onclose = () => {
+      socket.onclose = (event) => {
+        if (this.socket !== socket) return;
+        if (![1006, 1011].includes(event.code)) return;
         if (this.reconnectAttempts < 3) {
           this.reconnectAttempts += 1;
           setTimeout(() => this.connectSocket(conversationId), 800 * this.reconnectAttempts);
@@ -128,8 +130,9 @@ export const useChatStore = defineStore("chat", {
     },
     closeSocket() {
       if (this.socket) {
-        this.socket.close();
+        const socket = this.socket;
         this.socket = null;
+        socket.close();
       }
     },
   },

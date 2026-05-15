@@ -3,25 +3,18 @@
     <section class="auth-card">
       <BaseChip icon="solar:user-plus-linear">Регистрация</BaseChip>
       <h1>Создайте аккаунт</h1>
-      <p class="text-muted">Выберите роль: покупатель или агент.</p>
+      <p class="text-muted">Регистрация доступна для покупателей. Доступ агентам выдаёт администратор сайта.</p>
       <form @submit.prevent="submit">
         <BaseField v-model="email" label="Email" icon="solar:letter-bold" type="email" required />
         <BaseField v-model="password" label="Пароль" icon="solar:lock-password-bold" type="password" required />
         <BaseField v-model="passwordConfirm" label="Подтверждение пароля" icon="solar:lock-keyhole-linear" type="password" required />
-        <label class="select-field">
-          <span>Роль</span>
-          <select v-model="role">
-            <option value="user">Покупатель</option>
-            <option value="agent">Агент</option>
-          </select>
-        </label>
         <p v-if="auth.error" class="form-error">{{ auth.error }}</p>
         <BaseButton type="submit" icon="solar:user-rounded-plus-outline" block>Создать</BaseButton>
       </form>
       <RouterLink to="/login">Уже есть аккаунт? Войти</RouterLink>
     </section>
     <aside class="auth-aside">
-      <img src="https://images.unsplash.com/photo-1493666438817-866a91353ca9?w=900" alt="" />
+      <img src="https://media.istockphoto.com/id/1009803562/photo/group-of-people-on-peak-mountain-climbing-helping-team-work-travel-trekking-success-business.jpg?s=612x612&w=0&k=20&c=gad9D1DedURyygQNZn3LDvfQREsqsVOrl_7y6Wp08LE=" alt="" />
       <div>
         <h3>Команда Lev</h3>
         <p>Сопровождаем сделки и автоматизируем подбор.</p>
@@ -41,7 +34,6 @@ import { useAuthStore } from "@/store/auth";
 const email = ref("");
 const password = ref("");
 const passwordConfirm = ref("");
-const role = ref("user");
 const auth = useAuthStore();
 const router = useRouter();
 
@@ -50,7 +42,6 @@ const submit = async () => {
     email: email.value,
     password: password.value,
     password_confirm: passwordConfirm.value,
-    role: role.value,
   });
   router.push("/cabinet");
 };
@@ -111,12 +102,14 @@ form {
   border-radius: $radius-lg;
   overflow: hidden;
   min-height: 420px;
+  isolation: isolate;
 
   @include mobile {
     display: none;
   }
 
   img {
+    position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
@@ -125,12 +118,27 @@ form {
 
   div {
     position: absolute;
-    bottom: 1rem;
-    left: 1rem;
-    background: rgba(0, 0, 0, 0.4);
+    left: 50%;
+    right: auto;
+    bottom: 1.25rem;
+    width: min(360px, calc(100% - 2.5rem));
+    transform: translateX(-50%);
+    background: rgba(15, 23, 42, 0.72);
     color: #fff;
-    padding: 1rem;
+    padding: 1rem 1.25rem;
     border-radius: $radius-md;
+    text-align: center;
+    backdrop-filter: blur(10px);
+
+    h3,
+    p {
+      margin: 0;
+    }
+
+    p {
+      margin-top: 0.35rem;
+      line-height: 1.45;
+    }
   }
 }
 </style>

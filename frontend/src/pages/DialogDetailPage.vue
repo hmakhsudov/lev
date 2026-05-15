@@ -38,7 +38,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { RouterLink, useRoute, useRouter } from "vue-router";
 import SkeletonBlock from "@/components/ui/SkeletonBlock.vue";
 import { useAuthStore } from "@/store/auth";
@@ -91,14 +91,29 @@ const goBack = () => {
 
 watch(messages, () => scrollToBottom(), { deep: true });
 
-onMounted(async () => {
+const loadDialog = async () => {
   if (!auth.isAuthenticated) {
     router.push("/login");
     return;
   }
   const id = route.params.id;
+  if (!id) return;
   await chat.openConversation(id);
   scrollToBottom();
+};
+
+watch(
+  () => route.params.id,
+  () => loadDialog()
+);
+
+onMounted(async () => {
+  window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  await loadDialog();
+});
+
+onBeforeUnmount(() => {
+  chat.closeSocket();
 });
 </script>
 

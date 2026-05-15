@@ -24,8 +24,8 @@
       </label>
       <BaseField v-model.number="model.min_price" label="Мин. цена" icon="solar:wallet-money-linear" type="number" placeholder="от" />
       <BaseField v-model.number="model.max_price" label="Макс. цена" icon="solar:wallet-outline" type="number" placeholder="до" />
-      <BaseField v-model.number="model.area_min" label="Мин. площадь" icon="solar:ruler-cross-broken" type="number" />
-      <BaseField v-model.number="model.area_max" label="Макс. площадь" icon="solar:ruler-cross-linear" type="number" />
+      <BaseField v-model.number="model.area_min" label="Мин. площадь" icon="solar:ruler-linear" type="number" />
+      <BaseField v-model.number="model.area_max" label="Макс. площадь" icon="solar:ruler-linear" type="number" />
     </div>
     <footer>
       <BaseButton icon="solar:filter-bold" @click="$emit('submit')">Показать объекты</BaseButton>

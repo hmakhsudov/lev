@@ -5,7 +5,7 @@
 ## 1. Архитектура
 - **Бэкенд**: Django + Django REST Framework, SQLite по умолчанию (через `DATABASE_URL` легко переключается на PostgreSQL). JWT‑аутентификация на базе SimpleJWT, поддержка CORS и конфигурации через `.env`.
 - **Фронтенд**: Vue 3 (script setup) + Vite + SCSS. Используются Pinia (состояние), vue-router, axios, Swiper, FloatingVue, Iconify, Motion.
-- **Интеграции**: OpenAI API (парсинг естественного запроса в фильтры) и Yandex Geocoder API (координаты и карта).
+- **Интеграции**: OpenRouter API (парсинг естественного запроса в фильтры) и Yandex Geocoder API (координаты и карта).
 - **Структура**:
   - `backend/` — проект `django_project` и приложения `accounts`, `real_estate`, `assistant`, `core`.
   - `frontend/` — SPA с маршрутами для поиска, карточек, ассистента, панели агента и auth.
@@ -32,15 +32,15 @@
 
 ### 2.3 Приложение `assistant`
 - Эндпоинт `/api/assistant/parse-query/` принимает `{ "query": "..." }`.
-- Вызов OpenAI Chat Completions (`gpt-4o-mini`) с системной подсказкой → строгий JSON с полями `rooms`, `price_max`, `district`, `city`, `property_type`.
-- Ошибки OpenAI преобразуются в HTTP 503 с описанием.
+- Вызов OpenRouter Chat Completions с системной подсказкой → строгий JSON с полями `rooms`, `price_max`, `district`, `city`, `property_type`.
+- Ошибки OpenRouter преобразуются в HTTP 503 с описанием.
 
 ### 2.4 Приложение `core`
 - `/api/core/health/` — healthcheck (AllowAny). Используется мониторингом и фронтендом.
 
 ### 2.5 Конфигурация и безопасность
 - `settings.py`: чтение `.env`, подключение `dj_database_url`, CORS, статические файлы, SimpleJWT.
-- `.env.example` определяет ключи: `DJANGO_SECRET_KEY`, `DEBUG`, `DATABASE_URL`, `OPENAI_API_KEY`, `YANDEX_GEOCODER_API_KEY`, `CORS_ALLOWED_ORIGINS`.
+- `.env.example` определяет ключи: `DJANGO_SECRET_KEY`, `DEBUG`, `DATABASE_URL`, `OPENROUTER_TOKEN`, `OPENROUTER_API`, `OPENROUTER_TIMEOUT_SECONDS`, `YANDEX_GEOCODER_API_KEY`, `CORS_ALLOWED_ORIGINS`.
 
 ## 3. Фронтенд
 ### 3.1 Главная (`/`)
@@ -80,7 +80,7 @@
 - **Адаптив**: гриды перестраиваются для планшетов/мобил, sticky элементы отключаются на узких экранах.
 
 ## 5. Интеграции и окружение
-- `.env.example` (корень) — ключи для бэкенда; `frontend/.env.example` — `VITE_API_URL`, `VITE_OPENAI_KEY`, `VITE_YANDEX_MAPS_API_KEY` (используется картой и возможными UI‑фичами).
+- `.env.example` (корень) — ключи для бэкенда и фронтенда: `VITE_API_URL`, `VITE_WS_URL`, `VITE_YANDEX_MAPS_API_KEY`.
 - Все сетевые вызовы frontend выполняет через `axios` инстанс `services/api.js` (авто‑добавление JWT в заголовок `Authorization`).
 - Карта загружается динамически (добавление <script> + Promise), маркеры создаются из JSON‑ответа бэкенда.
 
@@ -93,13 +93,13 @@
 ## 7. Расширение
 - **CI/CD**: проект уже готов к Docker/CI настройкам (env, requirements, build scripts).
 - **PostgreSQL**: смена `DATABASE_URL` и `pip install psycopg[binary]` (при необходимости) позволит мигрировать в прод.
-- **OpenAI**: легко заменить модель или добавить fallback (обработчик ошибок уже предусмотрен).
+- **OpenRouter**: можно заменить модель через `OPENROUTER_MODEL` или добавить fallback (обработчик ошибок уже предусмотрен).
 - **Карты**: Yandex Map API key хранится в Vite env, можно добавить кластеры, маршруты, поиск по карте.
 
 ## 8. Краткий чек-лист запуска
 1. `cp .env.example .env` → заполнить ключи.
 2. **Backend**: `cd backend && python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt && python manage.py migrate && python manage.py runserver`.
 3. **Frontend**: `cd frontend && npm install && npm run dev`.
-4. В `.env`/`frontend/.env` указать OpenAI/Yandex ключи для полноценных AI и геокодер функций.
+4. В `.env`/`frontend/.env` указать OpenRouter/Yandex ключи для полноценных AI и геокодер функций.
 
 Так реализован полный функционал Lev Estate — современного веб‑приложения для AI‑подбора недвижимости с картой, фильтрами, админ‑панелью и богатым UI.

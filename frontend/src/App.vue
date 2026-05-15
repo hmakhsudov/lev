@@ -3,21 +3,21 @@
     <header class="app-shell__header" :class="{ 'app-shell__header--scrolled': scrolled }">
       <div class="container header__content">
         <RouterLink to="/" class="brand">
-          <img src="https://cdn.jsdelivr.net/gh/tabler/tabler-icons/icons/home.svg" alt="Lev" />
           <div>
             <p>LEV ESTATE</p>
             <small>AI недвижимость</small>
           </div>
         </RouterLink>
         <nav>
-          <RouterLink to="/">Объекты</RouterLink>
-          <RouterLink to="/assistant">AI ассистент</RouterLink>
-          <RouterLink to="/favorites">
+          <RouterLink to="/" data-hint="Каталог объектов, фильтры и карта">Объекты</RouterLink>
+          <RouterLink to="/assistant" data-hint="Подбор недвижимости по текстовому запросу">AI ассистент</RouterLink>
+          <RouterLink to="/favorites" data-hint="Сохранённые объекты">
             Избранное
             <span v-if="favoritesCount" class="badge">{{ favoritesCount }}</span>
           </RouterLink>
-          <RouterLink v-if="isAuthenticated" to="/dialogs">Диалоги</RouterLink>
-          <RouterLink v-if="isAgentOrAdmin" to="/admin">Панель агента</RouterLink>
+          <RouterLink v-if="isAuthenticated" to="/dialogs" data-hint="Переписка с агентами и клиентами">Диалоги</RouterLink>
+          <RouterLink v-if="isAdmin" to="/admin" data-hint="Объекты, агенты и управление сайтом">Админ панель</RouterLink>
+          <RouterLink v-else-if="isAgent" to="/agent" data-hint="Создание и редактирование ваших объектов">Панель агента</RouterLink>
         </nav>
         <div class="header__actions">
           <template v-if="isAuthenticated">
@@ -42,7 +42,8 @@
             <span v-if="favoritesCount" class="badge">{{ favoritesCount }}</span>
           </RouterLink>
           <RouterLink v-if="isAuthenticated" to="/dialogs" @click="menuOpen = false">Диалоги</RouterLink>
-          <RouterLink v-if="isAgentOrAdmin" to="/admin" @click="menuOpen = false">Панель агента</RouterLink>
+          <RouterLink v-if="isAdmin" to="/admin" @click="menuOpen = false">Админ панель</RouterLink>
+          <RouterLink v-else-if="isAgent" to="/agent" @click="menuOpen = false">Панель агента</RouterLink>
           <RouterLink v-if="isAuthenticated" to="/cabinet" @click="menuOpen = false">Личный кабинет</RouterLink>
           <button v-if="isAuthenticated" type="button" class="ghost" @click="handleLogout">Выйти</button>
           <template v-else>
@@ -85,7 +86,8 @@ const chat = useChatStore();
 const router = useRouter();
 
 const isAuthenticated = computed(() => auth.isAuthenticated);
-const isAgentOrAdmin = computed(() => auth.isAgent || auth.isAdmin);
+const isAdmin = computed(() => auth.isAdmin);
+const isAgent = computed(() => auth.isAgent);
 const favoritesCount = computed(() => favorites.count);
 
 const logout = () => {
@@ -166,6 +168,7 @@ onUnmounted(() => window.removeEventListener("scroll", onScroll));
     gap: 1rem;
 
     a {
+      position: relative;
       color: $color-muted;
       padding: 0.5rem 0.8rem;
       border-radius: $radius-sm;
@@ -178,6 +181,35 @@ onUnmounted(() => window.removeEventListener("scroll", onScroll));
       &:hover {
         color: $color-primary;
         background: rgba(31, 117, 255, 0.1);
+      }
+
+      &::after {
+        content: attr(data-hint);
+        position: absolute;
+        left: 50%;
+        top: calc(100% + 0.65rem);
+        transform: translate(-50%, -4px);
+        width: max-content;
+        max-width: 240px;
+        padding: 0.55rem 0.75rem;
+        border-radius: $radius-md;
+        background: #0f172a;
+        color: #fff;
+        font-size: 0.78rem;
+        line-height: 1.3;
+        box-shadow: $shadow-hover;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity $transition-base, transform $transition-base;
+        z-index: 80;
+        text-align: center;
+        white-space: normal;
+      }
+
+      &:hover::after,
+      &:focus-visible::after {
+        opacity: 1;
+        transform: translate(-50%, 0);
       }
     }
 
@@ -195,8 +227,7 @@ onUnmounted(() => window.removeEventListener("scroll", onScroll));
   color: #111827;
 
   img {
-    width: 36px;
-    filter: invert(12%) sepia(86%) saturate(6406%) hue-rotate(208deg) brightness(92%) contrast(104%);
+    display: none;
   }
 
   small {

@@ -78,6 +78,12 @@ const onInput = (event) => {
   font-size: 1rem;
 }
 
+textarea.base-field__input {
+  min-height: 120px;
+  resize: none;
+  line-height: 1.5;
+}
+
 .base-field__hint {
   color: $color-muted;
   font-size: 0.8rem;

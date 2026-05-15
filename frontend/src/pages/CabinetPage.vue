@@ -51,7 +51,7 @@
           При необходимости свяжитесь с менеджером для повышения роли и доступа к дополнительным функциям.
         </p>
         <div class="actions">
-          <RouterLink v-if="isAgent" to="/admin" class="action-link">Панель агента</RouterLink>
+          <RouterLink v-if="isAgent" to="/agent" class="action-link">Панель агента</RouterLink>
           <RouterLink v-if="isAdmin" to="/admin" class="action-link">Админ панель</RouterLink>
           <RouterLink to="/" class="action-link">Вернуться к объектам</RouterLink>
         </div>

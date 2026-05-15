@@ -4,7 +4,14 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .serializers import LoginSerializer, RegisterSerializer, UserSerializer
+from .permissions import IsAdminUserRole
+from .serializers import (
+    AgentCreateSerializer,
+    LoginSerializer,
+    RegisterSerializer,
+    UserProfileUpdateSerializer,
+    UserSerializer,
+)
 
 User = get_user_model()
 
@@ -49,11 +56,38 @@ class CurrentUserView(APIView):
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
 
+    def patch(self, request):
+        serializer = UserProfileUpdateSerializer(
+            request.user,
+            data=request.data,
+            partial=True,
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(UserSerializer(request.user).data, status=status.HTTP_200_OK)
+
 
 class AgentListView(generics.ListAPIView):
     serializer_class = UserSerializer
-    permission_classes = [permissions.AllowAny]
-    authentication_classes = []
+    permission_classes = [permissions.IsAuthenticated, IsAdminUserRole]
 
     def get_queryset(self):
         return User.objects.filter(role=User.ROLE_AGENT)
+
+
+class AdminAgentListCreateView(generics.ListCreateAPIView):
+    permission_classes = [permissions.IsAuthenticated, IsAdminUserRole]
+
+    def get_queryset(self):
+        return User.objects.filter(role=User.ROLE_AGENT).order_by("-created_at")
+
+    def get_serializer_class(self):
+        if self.request.method == "POST":
+            return AgentCreateSerializer
+        return UserSerializer
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)

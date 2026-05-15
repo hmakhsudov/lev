@@ -68,7 +68,29 @@ class PropertyImage(models.Model):
     property = models.ForeignKey(
         Property, related_name="gallery", on_delete=models.CASCADE
     )
-    url = models.URLField()
+    url = models.URLField(blank=True)
+    image = models.FileField(upload_to="property_images/", blank=True, null=True)
 
     def __str__(self):
-        return self.url
+        return self.url or (self.image.url if self.image else "")
+
+
+class Favorite(models.Model):
+    user = models.ForeignKey(
+        User, related_name="favorites", on_delete=models.CASCADE
+    )
+    property = models.ForeignKey(
+        Property, related_name="favorited_by", on_delete=models.CASCADE
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "property"],
+                name="unique_user_favorite_property",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.user_id} -> {self.property_id}"

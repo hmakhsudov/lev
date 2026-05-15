@@ -16,7 +16,8 @@ const routes = [
   { path: "/", component: HomePage },
   { path: "/property/:id", component: PropertyDetailPage, props: true },
   { path: "/assistant", component: AssistantPage },
-  { path: "/admin", component: AdminDashboard },
+  { path: "/admin", component: AdminDashboard, meta: { requiresAuth: true, requiresAdmin: true } },
+  { path: "/agent", component: AdminDashboard, meta: { requiresAuth: true, requiresAgent: true } },
   { path: "/cabinet", component: CabinetPage, meta: { requiresAuth: true } },
   { path: "/favorites", component: FavoritesPage },
   { path: "/dialogs", component: DialogsPage, meta: { requiresAuth: true } },
@@ -28,6 +29,10 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
+  scrollBehavior(to, from, savedPosition) {
+    if (savedPosition) return savedPosition;
+    return { top: 0, left: 0 };
+  },
 });
 
 router.beforeEach(async (to, from, next) => {
@@ -35,6 +40,12 @@ router.beforeEach(async (to, from, next) => {
   await auth.init();
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
     return next({ path: "/login", query: { redirect: to.fullPath } });
+  }
+  if (to.meta.requiresAdmin && !auth.isAdmin) {
+    return next(auth.isAuthenticated ? "/cabinet" : "/login");
+  }
+  if (to.meta.requiresAgent && !(auth.isAgent || auth.isAdmin)) {
+    return next(auth.isAuthenticated ? "/cabinet" : "/login");
   }
   return next();
 });

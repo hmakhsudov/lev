@@ -1,21 +1,37 @@
-from rest_framework import permissions, status, viewsets
+from django.shortcuts import get_object_or_404
+from rest_framework import pagination, parsers, permissions, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from accounts.permissions import IsAgentOrAdmin
+from accounts.permissions import IsAgentOrAdmin, IsPropertyOwnerOrAdmin
 from integrations.ads_api_client import AdsAPIError
-from .models import Property
+from .models import Favorite, Property
 from .serializers import PropertySerializer, PropertyWriteSerializer
 from .services import YandexGeocoder, sync_ads_listings
+
+
+class PropertyPagination(pagination.PageNumberPagination):
+    page_size = 12
+    page_size_query_param = "page_size"
+    max_page_size = 60
 
 
 class PropertyViewSet(viewsets.ModelViewSet):
     queryset = Property.objects.all().order_by("-created_at")
     serializer_class = PropertySerializer
+    pagination_class = PropertyPagination
+    parser_classes = [parsers.JSONParser, parsers.MultiPartParser, parsers.FormParser]
 
     def get_permissions(self):
         if self.action in {"list", "retrieve"}:
             permission_classes = [permissions.AllowAny]
+        elif self.action in {"update", "partial_update", "destroy"}:
+            permission_classes = [
+                permissions.IsAuthenticated,
+                IsAgentOrAdmin,
+                IsPropertyOwnerOrAdmin,
+            ]
         else:
             permission_classes = [permissions.IsAuthenticated, IsAgentOrAdmin]
         return [permission() for permission in permission_classes]
@@ -38,6 +54,10 @@ class PropertyViewSet(viewsets.ModelViewSet):
         area_min = params.get("area_min")
         area_max = params.get("area_max")
         order_by = params.get("order_by")
+        mine = params.get("mine")
+
+        if mine in {"1", "true", "True"} and self.request.user.is_authenticated:
+            queryset = queryset.filter(created_by=self.request.user)
 
         if min_price:
             queryset = queryset.filter(price__gte=min_price)
@@ -62,6 +82,28 @@ class PropertyViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        read_serializer = PropertySerializer(
+            serializer.instance,
+            context=self.get_serializer_context(),
+        )
+        return Response(read_serializer.data, status=status.HTTP_201_CREATED)
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop("partial", False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        read_serializer = PropertySerializer(
+            serializer.instance,
+            context=self.get_serializer_context(),
+        )
+        return Response(read_serializer.data)
 
     @action(detail=False, methods=["post"])
     def geocode(self, request):
@@ -99,3 +141,39 @@ class PropertyViewSet(viewsets.ModelViewSet):
             return int(value)
         except (TypeError, ValueError):
             return None
+
+
+class FavoriteListCreateView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        properties = (
+            Property.objects.filter(favorited_by__user=request.user)
+            .distinct()
+            .order_by("-favorited_by__created_at")
+        )
+        serializer = PropertySerializer(
+            properties,
+            many=True,
+            context={"request": request},
+        )
+        return Response({"results": serializer.data, "count": properties.count()})
+
+    def post(self, request):
+        listing_id = request.data.get("listing_id") or request.data.get("property_id")
+        if not listing_id:
+            return Response(
+                {"listing_id": ["Укажите объект для добавления в избранное."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        property_obj = get_object_or_404(Property, pk=listing_id)
+        Favorite.objects.get_or_create(user=request.user, property=property_obj)
+        return Response({"favorited": True}, status=status.HTTP_201_CREATED)
+
+
+class FavoriteDeleteView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def delete(self, request, listing_id):
+        Favorite.objects.filter(user=request.user, property_id=listing_id).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
