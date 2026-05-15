@@ -70,7 +70,8 @@
 
 <script setup>
 import { Icon } from "@iconify/vue";
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
+import { useRoute } from "vue-router";
 import AssistantInput from "@/components/AssistantInput.vue";
 import ListingCard from "@/components/ListingCard.vue";
 import BaseChip from "@/components/ui/BaseChip.vue";
@@ -79,6 +80,7 @@ import api from "@/services/api";
 const query = ref("");
 const loading = ref(false);
 const result = ref(null);
+const route = useRoute();
 const labels = {
   rooms: "Комнаты",
   price_max: "Макс. цена",
@@ -96,9 +98,11 @@ const tips = [
 ];
 
 const parse = async () => {
+  const normalizedQuery = query.value.trim();
+  if (!normalizedQuery) return;
   loading.value = true;
   try {
-    const { data } = await api.post("/assistant/parse-query/", { query: query.value });
+    const { data } = await api.post("/assistant/parse-query/", { query: normalizedQuery });
     result.value = data;
   } catch (error) {
     result.value = {
@@ -124,6 +128,13 @@ const displayValue = (value, key) => {
   }
   return value;
 };
+
+onMounted(() => {
+  const initialQuery = typeof route.query.q === "string" ? route.query.q.trim() : "";
+  if (!initialQuery) return;
+  query.value = initialQuery;
+  parse();
+});
 </script>
 
 <style scoped lang="scss">

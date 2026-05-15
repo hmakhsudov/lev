@@ -118,6 +118,7 @@
 <script setup>
 import { Icon } from "@iconify/vue";
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { useRouter } from "vue-router";
 import AssistantInput from "@/components/AssistantInput.vue";
 import FilterForm from "@/components/FilterForm.vue";
 import ListingCard from "@/components/ListingCard.vue";
@@ -128,6 +129,7 @@ import api from "@/services/api";
 const properties = ref([]);
 const aiQuery = ref("");
 const assistantLoading = ref(false);
+const router = useRouter();
 const loading = ref(true);
 const viewMode = ref("list");
 const selectedProperty = ref(null);
@@ -176,18 +178,10 @@ const fetchProperties = async () => {
   }
 };
 
-const handleAssistant = async (text) => {
-  assistantLoading.value = true;
-  try {
-    const { data } = await api.post("/assistant/parse-query/", { query: text });
-    filters.value = { ...filters.value, ...data.filters };
-    page.value = 1;
-    await fetchProperties();
-  } catch (error) {
-    console.error(error);
-  } finally {
-    assistantLoading.value = false;
-  }
+const handleAssistant = (text) => {
+  const query = String(text || "").trim();
+  if (!query) return;
+  router.push({ path: "/assistant", query: { q: query } });
 };
 
 const resetFilters = () => {
